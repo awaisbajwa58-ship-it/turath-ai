@@ -38,15 +38,55 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
     setErrorMessage('');
 
     try {
-      const res = await fetch('/api/config/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: trimmed }),
-      });
+      let isValid = false;
+      let errorMsg = '';
 
-      const data = await res.json();
+      // First attempt: Backend validation
+      try {
+        const res = await fetch('/api/config/validate-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: trimmed }),
+        });
 
-      if (data.valid) {
+        if (res.ok) {
+          const text = await res.text();
+          try {
+            const data = JSON.parse(text);
+            if (data.valid) {
+              isValid = true;
+            } else {
+              errorMsg = data.error || 'درج کردہ API Key درست نہیں ہے۔ براہ کرم تصدیق کریں۔';
+            }
+          } catch {
+            // Non-JSON response, fall through to Google direct check
+          }
+        }
+      } catch {
+        // Backend offline / network issue, proceed to direct check
+      }
+
+      // Second attempt (Fallback): Direct client-side Google AI Studio validation
+      if (!isValid && !errorMsg) {
+        try {
+          const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${trimmed}`);
+          if (gRes.ok) {
+            isValid = true;
+          } else {
+            const gText = await gRes.text();
+            try {
+              const gData = JSON.parse(gText);
+              errorMsg = gData?.error?.message || 'درج کردہ API Key درست نہیں ہے۔ براہ کرم تصدیق کریں۔';
+            } catch {
+              errorMsg = 'درج کردہ API Key درست نہیں ہے۔';
+            }
+          }
+        } catch {
+          errorMsg = 'انٹرنیٹ یا گوگل سروس سے رابطہ قائم نہیں ہو سکا۔';
+        }
+      }
+
+      if (isValid) {
         setValidationStatus('valid');
         onSaveKey(trimmed);
         setTimeout(() => {
@@ -54,7 +94,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
         }, 1200);
       } else {
         setValidationStatus('invalid');
-        setErrorMessage(data.error || 'درج کردہ API Key درست نہیں ہے۔ براہ کرم تصدیق کریں۔');
+        setErrorMessage(errorMsg || 'درج کردہ API Key درست نہیں ہے۔ براہ کرم تصدیق کریں۔');
       }
     } catch (err: any) {
       setValidationStatus('invalid');
