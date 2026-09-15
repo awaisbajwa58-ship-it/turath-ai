@@ -1,0 +1,6 @@
+{
+  "name": "فقہی تحقیقی معاون",
+  "description": "تراث اور نصوص کی مستند کتب سے عربی عبارات کی تلاش اور اردو تحقیقی معاون",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
